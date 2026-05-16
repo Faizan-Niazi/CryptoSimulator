@@ -61,8 +61,18 @@
                         </ul>
 
                         <div class="form-group mb-3">
-                            <label class="form-label text-muted">Amount (@(isBuyMode ? "USD" : coin.Symbol.ToUpper()))</label>
-                            <input type="number" class="form-control bg-dark text-white border-secondary" @bind="tradeAmount" @bind:event="oninput" placeholder="0.00" />
+                            <div class="d-flex justify-content-between align-items-end mb-2">
+                                <label class="form-label text-muted mb-0 small text-uppercase fw-bold">Amount (@(isBuyMode ? "USD" : coin.Symbol.ToUpper()))</label>
+                                @if (isBuyMode)
+                                {
+                                    <button class="btn btn-link btn-sm p-0 text-primary text-decoration-none" @onclick="SetMaxBuy">MAX: $@wallet?.Balance.ToString("N2")</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-link btn-sm p-0 text-danger text-decoration-none" @onclick="SetMaxSell">MAX: @portfolioItem?.Quantity.ToString("F8")</button>
+                                }
+                            </div>
+                            <input type="number" class="form-control bg-dark bg-opacity-50 text-white border-secondary border-opacity-25 py-2 px-3" @bind="tradeAmount" @bind:event="oninput" placeholder="0.00" />
                         </div>
 
                         @if (isBuyMode)
@@ -135,6 +145,16 @@
             wallet = await DbContext.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
             portfolioItem = await DbContext.Portfolios.FirstOrDefaultAsync(p => p.UserId == userId && p.CoinId == CoinId);
         }
+    }
+
+    private void SetMaxBuy()
+    {
+        if (wallet != null) tradeAmount = wallet.Balance;
+    }
+
+    private void SetMaxSell()
+    {
+        if (portfolioItem != null) tradeAmount = portfolioItem.Quantity;
     }
 
     private async Task ExecuteBuy()
