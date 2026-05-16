@@ -1,0 +1,139 @@
+@page "/Account/Manage/Email"
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using CryptoSimulator.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject IdentityUserAccessor UserAccessor
+@inject NavigationManager NavigationManager
+
+<PageTitle>Email Settings — CryptoSimulator</PageTitle>
+
+<div class="mb-4">
+    <h4 class="fw-bold mb-1">Email Address</h4>
+    <p class="text-muted small">Manage your account's email address and verification status.</p>
+</div>
+
+<StatusMessage Message="@message"/>
+
+<div class="row">
+    <div class="col-xl-8">
+        <form @onsubmit="OnSendEmailVerificationAsync" @formname="send-verification" id="send-verification-form" method="post">
+            <AntiforgeryToken />
+        </form>
+        <EditForm Model="Input" FormName="change-email" OnValidSubmit="OnValidSubmitAsync" method="post">
+            <DataAnnotationsValidator />
+            
+            <div class="mb-4">
+                <label class="form-label fw-semibold small text-uppercase text-muted">Current Email</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark bg-opacity-25 border-secondary border-opacity-25"><i class="bi bi-envelope"></i></span>
+                    <input type="text" value="@email" class="form-control bg-dark bg-opacity-10 border-secondary border-opacity-25 text-muted" disabled />
+                    @if (isEmailConfirmed)
+                    {
+                        <span class="input-group-text bg-success bg-opacity-10 border-secondary border-opacity-25 text-success">
+                            <i class="bi bi-patch-check-fill me-1"></i> Verified
+                        </span>
+                    }
+                </div>
+                @if (!isEmailConfirmed)
+                {
+                    <div class="mt-2">
+                        <button type="submit" class="btn btn-link btn-sm text-warning p-0 text-decoration-none" form="send-verification-form">
+                            <i class="bi bi-send me-1"></i> Send verification email
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <div class="mb-4">
+                <label for="new-email" class="form-label fw-semibold small text-uppercase text-muted">New Email Address</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark bg-opacity-25 border-secondary border-opacity-25"><i class="bi bi-envelope-plus"></i></span>
+                    <InputText @bind-Value="Input.NewEmail" class="form-control bg-dark bg-opacity-10 border-secondary border-opacity-25" id="new-email" autocomplete="email" aria-required="true" placeholder="Enter new email address" />
+                </div>
+                <ValidationMessage For="() => Input.NewEmail" class="text-danger small mt-1" />
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-5">
+                <button type="submit" class="btn btn-warning px-5 fw-bold py-2">
+                    <i class="bi bi-envelope-check me-2"></i>Change Email
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private string? message;
+    private ApplicationUser user = default!;
+    private string? email;
+    private bool isEmailConfirmed;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "change-email")]
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await UserAccessor.GetRequiredUserAsync(HttpContext);
+        email = await UserManager.GetEmailAsync(user);
+        isEmailConfirmed = await UserManager.IsEmailConfirmedAsync(user);
+
+        Input.NewEmail ??= email;
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (Input.NewEmail is null || Input.NewEmail == email)
+        {
+            message = "Your email is unchanged.";
+            return;
+        }
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        var code = await UserManager.GenerateChangeEmailTokenAsync(user, Input.NewEmail);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmailChange").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = userId, ["email"] = Input.NewEmail, ["code"] = code });
+
+        await EmailSender.SendConfirmationLinkAsync(user, Input.NewEmail, HtmlEncoder.Default.Encode(callbackUrl));
+
+        message = "Confirmation link to change email sent. Please check your email.";
+    }
+
+    private async Task OnSendEmailVerificationAsync()
+    {
+        if (email is null)
+        {
+            return;
+        }
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
+
+        await EmailSender.SendConfirmationLinkAsync(user, email, HtmlEncoder.Default.Encode(callbackUrl));
+
+        message = "Verification email sent. Please check your email.";
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        [Display(Name = "New email")]
+        public string? NewEmail { get; set; }
+    }
+}

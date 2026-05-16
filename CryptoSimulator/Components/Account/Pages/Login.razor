@@ -1,0 +1,196 @@
+@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using CryptoSimulator.Data
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Login — CryptoSimulator</PageTitle>
+
+<section class="auth-page">
+    <div class="container-fluid h-100 p-0">
+        <div class="row h-100 g-0">
+
+            <!-- LEFT: Branding Panel -->
+            <div class="col-lg-6 d-none d-lg-flex auth-brand-panel">
+                <div class="auth-brand-content">
+                    <div class="mb-4">
+                        <i class="bi bi-currency-bitcoin text-warning display-3"></i>
+                    </div>
+                    <h1 class="display-5 fw-bold mb-3">Welcome Back!</h1>
+                    <p class="lead opacity-75 mb-5">Sign in and continue growing your virtual portfolio.</p>
+                    
+                    <div class="row g-3 text-start" style="max-width: 400px;">
+                        <div class="col-12">
+                            <div class="d-flex align-items-center gap-3 auth-benefit-item">
+                                <div class="auth-benefit-icon bg-warning bg-opacity-25">
+                                    <i class="bi bi-graph-up-arrow text-warning"></i>
+                                </div>
+                                <div>
+                                    <strong>Track Your Portfolio</strong>
+                                    <div class="small opacity-75">Monitor holdings and real-time P&L</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center gap-3 auth-benefit-item">
+                                <div class="auth-benefit-icon bg-info bg-opacity-25">
+                                    <i class="bi bi-arrow-left-right text-info"></i>
+                                </div>
+                                <div>
+                                    <strong>Execute Trades</strong>
+                                    <div class="small opacity-75">Buy &amp; sell with live market prices</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center gap-3 auth-benefit-item">
+                                <div class="auth-benefit-icon bg-success bg-opacity-25">
+                                    <i class="bi bi-trophy text-success"></i>
+                                </div>
+                                <div>
+                                    <strong>Climb the Leaderboard</strong>
+                                    <div class="small opacity-75">Compete against other traders</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Form Panel -->
+            <div class="col-lg-6 d-flex align-items-center justify-content-center auth-form-panel">
+                <div class="auth-form-wrapper">
+
+                    <!-- Mobile Logo -->
+                    <div class="d-lg-none text-center mb-4">
+                        <i class="bi bi-currency-bitcoin text-warning display-5"></i>
+                        <h4 class="fw-bold mt-2">CryptoSimulator</h4>
+                    </div>
+
+                    <h2 class="fw-bold mb-1">Sign In</h2>
+                    <p class="text-secondary mb-4">Enter your credentials to access your account</p>
+
+                    <StatusMessage Message="@errorMessage" />
+
+                    <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="alert alert-danger small py-2" role="alert" />
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-uppercase ls-wide">Email Address</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="you@example.com" />
+                            </div>
+                            <ValidationMessage For="() => Input.Email" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-uppercase ls-wide">Password</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Enter your password" />
+                            </div>
+                            <ValidationMessage For="() => Input.Password" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="form-check">
+                                <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" id="rememberMe" />
+                                <label class="form-check-label small" for="rememberMe">Remember me</label>
+                            </div>
+                            <a href="Account/ForgotPassword" class="small fw-semibold text-decoration-none">Forgot password?</a>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold mb-3 auth-submit-btn">
+                            Sign In <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
+                    </EditForm>
+
+                    <div class="text-center mt-3 pt-3 border-top">
+                        <span class="text-secondary">Don't have an account?</span>
+                        <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))" class="fw-bold text-decoration-none ms-1">
+                            Create Account <i class="bi bi-arrow-right-short"></i>
+                        </a>
+                    </div>
+
+                    <div class="text-center mt-2">
+                        <a href="Account/ResendEmailConfirmation" class="small text-secondary text-decoration-none">
+                            <i class="bi bi-envelope-check me-1"></i>Resend email confirmation
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+@code {
+    private string? errorMessage;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            // Clear the existing external cookie to ensure a clean login process
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        // This doesn't count login failures towards account lockout
+        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User logged in.");
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            RedirectManager.RedirectTo(
+                "Account/LoginWith2fa",
+                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User account locked out.");
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            errorMessage = "Error: Invalid login attempt.";
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+}

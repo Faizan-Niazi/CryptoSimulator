@@ -1,0 +1,188 @@
+@page "/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using CryptoSimulator.Services
+@using CryptoSimulator.Data
+@using CryptoSimulator.Data.Models
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@inject CoinGeckoService CoinService
+@inject TradingService TradeService
+@inject ApplicationDbContext DbContext
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Dashboard — CryptoSimulator</PageTitle>
+
+<div class="container mt-4">
+    <h2 class="gradient-text mb-4"><i class="bi bi-grid-1x2-fill me-2"></i>Dashboard</h2>
+
+    @if (loading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Loading your dashboard...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Stats Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="glass-card h-100 position-relative overflow-hidden">
+                    <div class="position-absolute top-0 end-0 p-3 opacity-25">
+                        <i class="bi bi-wallet2 display-4"></i>
+                    </div>
+                    <small class="text-muted text-uppercase fw-semibold">Net Worth</small>
+                    <h2 class="fw-bold mt-2 mb-0">$@((wallet?.Balance + totalHoldingsValue)?.ToString("N2") ?? "0.00")</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card h-100 position-relative overflow-hidden">
+                    <div class="position-absolute top-0 end-0 p-3 opacity-25">
+                        <i class="bi bi-cash-stack display-4 text-success"></i>
+                    </div>
+                    <small class="text-muted text-uppercase fw-semibold">Available Cash</small>
+                    <h2 class="fw-bold text-success mt-2 mb-0">$@wallet?.Balance.ToString("N2")</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card h-100 position-relative overflow-hidden">
+                    <div class="position-absolute top-0 end-0 p-3 opacity-25">
+                        <i class="bi bi-pie-chart-fill display-4 text-info"></i>
+                    </div>
+                    <small class="text-muted text-uppercase fw-semibold">Holdings Value</small>
+                    <h2 class="fw-bold text-info mt-2 mb-0">$@totalHoldingsValue.ToString("N2")</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Top Gainers -->
+            <div class="col-lg-6">
+                <div class="glass-card h-100 p-0 overflow-hidden d-flex flex-column">
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-dark bg-opacity-10">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-graph-up-arrow text-success me-2"></i>Market Top Gainers</h5>
+                        <a href="/market" class="small text-decoration-none">View All</a>
+                    </div>
+                    <div class="table-responsive flex-grow-1">
+                        <table class="table table-borderless table-hover mb-0 align-middle">
+                            <tbody>
+                                @if (topGainers != null)
+                                {
+                                    @foreach (var coin in topGainers)
+                                    {
+                                        <tr>
+                                            <td class="ps-3">
+                                                <div class="d-flex align-items-center">
+                                                    <img src="@coin.Image" width="24" class="me-2 rounded-circle" />
+                                                    <span class="fw-bold">@coin.Name</span>
+                                                </div>
+                                            </td>
+                                            <td>$@(coin.CurrentPrice?.ToString("N2") ?? "0.00")</td>
+                                            <td class="text-end pe-3 price-up fw-semibold">
+                                                +@(coin.PriceChangePercentage24h?.ToString("F2") ?? "0.00")%
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="col-lg-6">
+                <div class="glass-card h-100 p-0 overflow-hidden d-flex flex-column">
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-dark bg-opacity-10">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-activity text-primary me-2"></i>Recent Activity</h5>
+                        <a href="/history" class="small text-decoration-none">View History</a>
+                    </div>
+                    <div class="flex-grow-1 p-3">
+                        @if (recentTransactions == null || !recentTransactions.Any())
+                        {
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-journal-x fs-1 opacity-50 mb-2 d-block"></i>
+                                <small>No recent trades found.</small>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column gap-3">
+                                @foreach (var t in recentTransactions)
+                                {
+                                    <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background: rgba(255,255,255,0.03);">
+                                        <div class="d-flex align-items-center gap-3">
+                                            @if (t.Type == TransactionType.Buy)
+                                            {
+                                                <div class="bg-success bg-opacity-25 text-success rounded p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                    <i class="bi bi-arrow-down-left fs-5"></i>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="bg-danger bg-opacity-25 text-danger rounded p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                    <i class="bi bi-arrow-up-right fs-5"></i>
+                                                </div>
+                                            }
+                                            <div>
+                                                <div class="fw-bold">@(t.Type == TransactionType.Buy ? "Bought" : "Sold") @t.Symbol.ToUpper()</div>
+                                                <div class="small text-muted">@t.Timestamp.ToLocalTime().ToString("MMM dd, HH:mm")</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-bold">@t.Quantity.ToString("F4") @t.Symbol.ToUpper()</div>
+                                            <div class="small text-muted">$@t.TotalUsdAmount.ToString("N2")</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool loading = true;
+    private string? userId;
+    private Wallet? wallet;
+    private decimal totalHoldingsValue;
+    private List<CoinModel>? topGainers;
+    private List<Transaction>? recentTransactions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            await LoadData();
+        }
+        loading = false;
+    }
+
+    private async Task LoadData()
+    {
+        wallet = await DbContext.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
+        
+        var coins = await CoinService.GetTopCoinsAsync(100);
+        
+        totalHoldingsValue = await TradeService.GetTotalPortfolioValueAsync(userId!, coins);
+
+        // Get Top 5 Gainers
+        topGainers = coins.Where(c => c.PriceChangePercentage24h > 0)
+                          .OrderByDescending(c => c.PriceChangePercentage24h)
+                          .Take(5)
+                          .ToList();
+
+        // Get 5 Recent Transactions
+        recentTransactions = await DbContext.Transactions
+                                            .Where(t => t.UserId == userId)
+                                            .OrderByDescending(t => t.Timestamp)
+                                            .Take(5)
+                                            .ToListAsync();
+    }
+}

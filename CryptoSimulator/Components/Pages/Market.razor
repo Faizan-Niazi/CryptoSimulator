@@ -1,0 +1,128 @@
+@page "/market"
+@rendermode InteractiveServer
+@using CryptoSimulator.Services
+@using CryptoSimulator.Data.Models
+@using CryptoSimulator.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@inject CoinGeckoService CoinService
+@inject NavigationManager Navigation
+@inject ApplicationDbContext DbContext
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="gradient-text">Crypto Market</h2>
+        <span class="badge bg-secondary">Live Prices from CoinGecko</span>
+    </div>
+
+    @if (coins == null)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Fetching market data...</p>
+        </div>
+    }
+    else
+    {
+        <div class="glass-card p-0 overflow-hidden">
+            <table class="crypto-table mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Coin</th>
+                        <th>Price</th>
+                        <th>24h Change</th>
+                        <th>Market Cap</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var coin in coins)
+                    {
+                        <tr>
+                            <td>@coin.MarketCapRank</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="@coin.Image" width="24" class="me-2" />
+                                    <div>
+                                        <span class="fw-bold">@coin.Name</span>
+                                        <span class="text-muted small ms-1 text-uppercase">@coin.Symbol</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>$@(coin.CurrentPrice?.ToString("N2") ?? "0.00")</td>
+                            <td class="@(coin.PriceChangePercentage24h >= 0 ? "price-up" : "price-down")">
+                                @(coin.PriceChangePercentage24h?.ToString("F2") ?? "0.00")%
+                            </td>
+                            <td>$@(coin.MarketCap?.ToString("N0") ?? "0")</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-warning btn-sm p-1 px-2" @onclick="() => ToggleWatchlist(coin.Id, coin.Symbol)" title="Toggle Watchlist">
+                                        <i class="bi @(IsInWatchlist(coin.Id) ? "bi-star-fill" : "bi-star")"></i>
+                                    </button>
+                                    <button class="btn-trade" @onclick="() => NavigateToTrade(coin.Id)">Trade</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<CoinModel>? coins;
+    private List<WatchlistItem> userWatchlist = new();
+    private string? userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            userWatchlist = await DbContext.Watchlists.Where(w => w.UserId == userId).ToListAsync();
+        }
+
+        coins = await CoinService.GetTopCoinsAsync(50);
+    }
+
+    private bool IsInWatchlist(string coinId)
+    {
+        return userWatchlist.Any(w => w.CoinId == coinId);
+    }
+
+    private async Task ToggleWatchlist(string coinId, string symbol)
+    {
+        if (userId == null) return;
+
+        var existing = userWatchlist.FirstOrDefault(w => w.CoinId == coinId);
+        if (existing != null)
+        {
+            DbContext.Watchlists.Remove(existing);
+            userWatchlist.Remove(existing);
+        }
+        else
+        {
+            var newItem = new WatchlistItem
+            {
+                UserId = userId,
+                CoinId = coinId,
+                Symbol = symbol
+            };
+            DbContext.Watchlists.Add(newItem);
+            userWatchlist.Add(newItem);
+        }
+        await DbContext.SaveChangesAsync();
+    }
+
+    private void NavigateToTrade(string coinId)
+    {
+        Navigation.NavigateTo($"/trade/{coinId}");
+    }
+}

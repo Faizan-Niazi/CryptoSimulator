@@ -1,0 +1,178 @@
+@page "/trade/{CoinId}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using CryptoSimulator.Services
+@using CryptoSimulator.Data
+@using CryptoSimulator.Data.Models
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@inject CoinGeckoService CoinService
+@inject TradingService TradeService
+@inject ApplicationDbContext DbContext
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="glass-card">
+                @if (coin == null)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-3">Loading coin data...</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center mb-4">
+                        <img src="@coin.Image" width="64" class="mb-2" />
+                        <h2 class="gradient-text">@coin.Name (@coin.Symbol.ToUpper())</h2>
+                        <h3 class="fw-light">Current Price: $@(coin.CurrentPrice?.ToString("N2") ?? "0.00")</h3>
+                    </div>
+
+                    <div class="mb-4 text-center">
+                        <div class="row">
+                            <div class="col-6 border-end">
+                                <small class="text-muted d-block text-uppercase">Your Balance</small>
+                                <span class="fw-bold text-success">$@wallet?.Balance.ToString("N2")</span>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block text-uppercase">Your Holdings</small>
+                                <span class="fw-bold text-info">@portfolioItem?.Quantity.ToString("F8") @coin.Symbol.ToUpper()</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Chart -->
+                    <div class="mb-4 rounded overflow-hidden border border-secondary border-opacity-25 shadow-sm" style="height: 350px;">
+                        <iframe src="https://s.tradingview.com/widgetembed/?symbol=CRYPTO:@(coin.Symbol.ToUpper())USD&interval=60&hidesidetoolbar=1&symboledit=0&theme=dark&style=1&timezone=Etc%2FUTC" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
+                    </div>
+
+                    <div class="mt-4">
+                        <ul class="nav nav-pills nav-fill mb-3" id="pills-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active @(isBuyMode ? "bg-primary" : "bg-transparent")" @onclick="() => isBuyMode = true">BUY</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link @(!isBuyMode ? "bg-danger" : "bg-transparent")" @onclick="() => isBuyMode = false">SELL</button>
+                            </li>
+                        </ul>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label text-muted">Amount (@(isBuyMode ? "USD" : coin.Symbol.ToUpper()))</label>
+                            <input type="number" class="form-control bg-dark text-white border-secondary" @bind="tradeAmount" @bind:event="oninput" placeholder="0.00" />
+                        </div>
+
+                        @if (isBuyMode)
+                        {
+                            <div class="mb-3 small text-muted">
+                                Estimated @coin.Symbol.ToUpper(): @(tradeAmount > 0 && coin.CurrentPrice > 0 ? (tradeAmount / coin.CurrentPrice.Value).ToString("F8") : "0.00")
+                            </div>
+                            <button class="btn btn-primary w-100 btn-lg shadow" @onclick="ExecuteBuy" disabled="@isProcessing">
+                                @(isProcessing ? "Processing..." : $"Buy {coin.Name}")
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="mb-3 small text-muted">
+                                Estimated USD: $@(tradeAmount > 0 ? (tradeAmount * (coin.CurrentPrice ?? 0)).ToString("N2") : "0.00")
+                            </div>
+                            <button class="btn btn-danger w-100 btn-lg shadow" @onclick="ExecuteSell" disabled="@isProcessing">
+                                @(isProcessing ? "Processing..." : $"Sell {coin.Name}")
+                            </button>
+                        }
+
+                        @if (!string.IsNullOrEmpty(message))
+                        {
+                            <div class="alert mt-3 @(message.Contains("successful") ? "alert-success" : "alert-danger") bg-opacity-25 border-0">
+                                @message
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="/market" class="text-muted text-decoration-none small">← Back to Market</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string CoinId { get; set; } = string.Empty;
+
+    private CoinModel? coin;
+    private Wallet? wallet;
+    private PortfolioItem? portfolioItem;
+    private bool isBuyMode = true;
+    private decimal tradeAmount;
+    private bool isProcessing = false;
+    private string message = "";
+    private string? userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        var coins = await CoinService.GetTopCoinsAsync(100);
+        coin = coins.FirstOrDefault(c => c.Id == CoinId);
+
+        if (userId != null)
+        {
+            wallet = await DbContext.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
+            portfolioItem = await DbContext.Portfolios.FirstOrDefaultAsync(p => p.UserId == userId && p.CoinId == CoinId);
+        }
+    }
+
+    private async Task ExecuteBuy()
+    {
+        if (tradeAmount <= 0) { message = "Please enter a valid amount."; return; }
+        if (userId == null || coin == null || coin.CurrentPrice == null) return;
+
+        isProcessing = true;
+        message = "";
+
+        decimal quantity = tradeAmount / coin.CurrentPrice.Value;
+        var result = await TradeService.BuyCoinAsync(userId, coin.Id, coin.Symbol, quantity, coin.CurrentPrice.Value);
+        
+        message = result.Message;
+        if (result.Success)
+        {
+            tradeAmount = 0;
+            await LoadData();
+        }
+        isProcessing = false;
+    }
+
+    private async Task ExecuteSell()
+    {
+        if (tradeAmount <= 0) { message = "Please enter a valid amount."; return; }
+        if (userId == null || coin == null || coin.CurrentPrice == null) return;
+
+        isProcessing = true;
+        message = "";
+
+        var result = await TradeService.SellCoinAsync(userId, coin.Id, tradeAmount, coin.CurrentPrice.Value);
+        
+        message = result.Message;
+        if (result.Success)
+        {
+            tradeAmount = 0;
+            await LoadData();
+        }
+        isProcessing = false;
+    }
+}

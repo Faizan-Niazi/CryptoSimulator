@@ -1,0 +1,279 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>CryptoSimulator — Virtual Cryptocurrency Trading</PageTitle>
+
+<!-- ========== HERO SECTION ========== -->
+<section class="hero-section py-5">
+    <div class="container position-relative py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2 mb-3 rounded-pill">
+                    <i class="bi bi-lightning-charge-fill me-1"></i> Virtual Trading Platform
+                </span>
+                <h1 class="display-4 fw-bold mb-3" style="line-height: 1.15;">
+                    Trade Crypto<br />
+                    <span class="gradient-text">Without the Risk</span>
+                </h1>
+                <p class="lead text-secondary mb-4" style="max-width: 520px;">
+                    Practice cryptocurrency trading with a <strong class="text-white">$10,000 virtual balance</strong>.
+                    Learn market behavior, test strategies, and compete on the leaderboard — all with real-time prices.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="Account/Register" class="btn btn-warning btn-lg px-4 fw-semibold">
+                        <i class="bi bi-rocket-takeoff me-2"></i>Start Trading Free
+                    </a>
+                    <a href="market" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-graph-up-arrow me-2"></i>View Market
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="stat-card text-center">
+                            <i class="bi bi-wallet2 text-warning fs-3 mb-2 d-block"></i>
+                            <h3 class="fw-bold text-white mb-0">$10K</h3>
+                            <small class="text-secondary">Starting Balance</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card text-center">
+                            <i class="bi bi-graph-up text-success fs-3 mb-2 d-block"></i>
+                            <h3 class="fw-bold text-white mb-0">Real-Time</h3>
+                            <small class="text-secondary">Market Prices</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card text-center">
+                            <i class="bi bi-shield-check text-info fs-3 mb-2 d-block"></i>
+                            <h3 class="fw-bold text-white mb-0">Zero</h3>
+                            <small class="text-secondary">Financial Risk</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card text-center">
+                            <i class="bi bi-trophy text-danger fs-3 mb-2 d-block"></i>
+                            <h3 class="fw-bold text-white mb-0">Compete</h3>
+                            <small class="text-secondary">Leaderboard</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== FEATURES SECTION ========== -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold display-6">Core <span class="gradient-text">Features</span></h2>
+            <p class="text-secondary mx-auto" style="max-width: 560px;">
+                Everything you need to simulate real cryptocurrency trading in a safe learning environment.
+            </p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card h-100">
+                    <div class="feature-icon bg-warning bg-opacity-10 text-warning mb-3">
+                        <i class="bi bi-person-plus"></i>
+                    </div>
+                    <h5 class="fw-bold">User Registration & Login</h5>
+                    <p class="text-secondary mb-0">Secure authentication with ASP.NET Core Identity. Get your virtual wallet instantly upon signup.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card h-100">
+                    <div class="feature-icon bg-success bg-opacity-10 text-success mb-3">
+                        <i class="bi bi-wallet2"></i>
+                    </div>
+                    <h5 class="fw-bold">Virtual Wallet System</h5>
+                    <p class="text-secondary mb-0">Start with $10,000 virtual USD. Track your balance as you buy and sell cryptocurrencies.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card h-100">
+                    <div class="feature-icon bg-info bg-opacity-10 text-info mb-3">
+                        <i class="bi bi-broadcast"></i>
+                    </div>
+                    <h5 class="fw-bold">Real-Time Price Integration</h5>
+                    <p class="text-secondary mb-0">Live cryptocurrency prices powered by the CoinGecko API. No dummy data — 100% real market info.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card h-100">
+                    <div class="feature-icon bg-primary bg-opacity-10 text-primary mb-3">
+                        <i class="bi bi-arrow-left-right"></i>
+                    </div>
+                    <h5 class="fw-bold">Buy / Sell Simulation</h5>
+                    <p class="text-secondary mb-0">Execute buy and sell orders using live market prices. Your portfolio updates instantly.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card h-100">
+                    <div class="feature-icon bg-danger bg-opacity-10 text-danger mb-3">
+                        <i class="bi bi-pie-chart"></i>
+                    </div>
+                    <h5 class="fw-bold">Portfolio Tracking</h5>
+                    <p class="text-secondary mb-0">Monitor your holdings, average buy price, current value, and real-time profit/loss (PnL).</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card h-100">
+                    <div class="feature-icon bg-warning bg-opacity-10 text-warning mb-3">
+                        <i class="bi bi-trophy"></i>
+                    </div>
+                    <h5 class="fw-bold">Leaderboard Ranking</h5>
+                    <p class="text-secondary mb-0">Compete with other traders. Rankings based on total net worth including held assets.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== HOW IT WORKS ========== -->
+<section class="py-5 section-alt">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold display-6">How It <span class="gradient-text">Works</span></h2>
+            <p class="text-secondary">Get started in 4 simple steps</p>
+        </div>
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-6 col-lg-3">
+                <div class="text-center">
+                    <div class="step-number bg-warning text-dark mx-auto mb-3">1</div>
+                    <h6 class="fw-bold">Sign Up</h6>
+                    <p class="text-secondary small mb-0">Create an account and receive $10,000 virtual balance instantly.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="text-center">
+                    <div class="step-number bg-info text-dark mx-auto mb-3">2</div>
+                    <h6 class="fw-bold">Browse Market</h6>
+                    <p class="text-secondary small mb-0">View live crypto prices from CoinGecko API with 24h changes.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="text-center">
+                    <div class="step-number bg-success text-dark mx-auto mb-3">3</div>
+                    <h6 class="fw-bold">Trade Coins</h6>
+                    <p class="text-secondary small mb-0">Buy and sell Bitcoin, Ethereum, and 50+ cryptocurrencies.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="text-center">
+                    <div class="step-number bg-danger text-white mx-auto mb-3">4</div>
+                    <h6 class="fw-bold">Compete</h6>
+                    <p class="text-secondary small mb-0">Track your portfolio and climb the global leaderboard.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== TECH STACK ========== -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold display-6">Technology <span class="gradient-text">Stack</span></h2>
+            <p class="text-secondary">Built with industry-standard tools</p>
+        </div>
+        <div class="row g-3 justify-content-center">
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="stat-card text-center">
+                    <i class="bi bi-filetype-cs text-primary fs-3 d-block mb-2"></i>
+                    <small class="fw-semibold">Blazor (C#)</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="stat-card text-center">
+                    <i class="bi bi-hdd-stack text-info fs-3 d-block mb-2"></i>
+                    <small class="fw-semibold">ASP.NET Core</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="stat-card text-center">
+                    <i class="bi bi-database text-success fs-3 d-block mb-2"></i>
+                    <small class="fw-semibold">SQL Server</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="stat-card text-center">
+                    <i class="bi bi-currency-bitcoin text-warning fs-3 d-block mb-2"></i>
+                    <small class="fw-semibold">CoinGecko API</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="stat-card text-center">
+                    <i class="bi bi-bootstrap text-purple fs-3 d-block mb-2" style="color: #7952b3 !important;"></i>
+                    <small class="fw-semibold">Bootstrap 5</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== TEAM SECTION ========== -->
+<section class="py-5" style="background: rgba(30, 27, 75, 0.2);">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold display-6">Meet the <span class="gradient-text">Team</span></h2>
+            <p class="text-secondary">The developers behind CryptoSimulator</p>
+        </div>
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="team-card text-center">
+                    <div class="team-avatar bg-warning bg-opacity-10 text-warning mx-auto mb-3">FK</div>
+                    <h5 class="fw-bold mb-1">Muhammad Faizan Khan</h5>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 mb-2">242840</span>
+                    <p class="text-secondary small mb-0">Trading Module &bull; Portfolio Management Module</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="team-card text-center">
+                    <div class="team-avatar bg-info bg-opacity-10 text-info mx-auto mb-3">AJ</div>
+                    <h5 class="fw-bold mb-1">Ammar Jamshaid</h5>
+                    <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 mb-2">233347</span>
+                    <p class="text-secondary small mb-0">User Authentication Module &bull; Frontend UI Module</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="team-card text-center">
+                    <div class="team-avatar bg-success bg-opacity-10 text-success mx-auto mb-3">MH</div>
+                    <h5 class="fw-bold mb-1">Muhammad Haseeb</h5>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 mb-2">242798</span>
+                    <p class="text-secondary small mb-0">Crypto Price Integration &bull; Virtual Wallet &bull; Leaderboard</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== CTA SECTION ========== -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center glass-card py-5 px-3">
+            <h2 class="fw-bold display-6 mb-3">Ready to Start Trading?</h2>
+            <p class="text-secondary mb-4 mx-auto" style="max-width: 480px;">
+                Join CryptoSimulator today and begin your cryptocurrency trading journey with zero risk.
+            </p>
+            <a href="Account/Register" class="btn btn-warning btn-lg px-5 fw-semibold">
+                <i class="bi bi-rocket-takeoff me-2"></i>Create Free Account
+            </a>
+        </div>
+    </div>
+</section>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+}

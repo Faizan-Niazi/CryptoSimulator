@@ -1,0 +1,100 @@
+@page "/history"
+@using Microsoft.AspNetCore.Authorization
+@using CryptoSimulator.Data
+@using CryptoSimulator.Data.Models
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@inject ApplicationDbContext DbContext
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Transaction History — CryptoSimulator</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="gradient-text"><i class="bi bi-clock-history me-2"></i>Transaction History</h2>
+    </div>
+
+    @if (loading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Loading your history...</p>
+        </div>
+    }
+    else if (transactions == null || !transactions.Any())
+    {
+        <div class="glass-card text-center py-5">
+            <i class="bi bi-receipt display-4 text-secondary mb-3"></i>
+            <h4 class="text-muted">No transactions found</h4>
+            <p class="text-secondary">You haven't made any trades yet. Go to the market to buy your first coin!</p>
+            <a href="/market" class="btn btn-outline-primary mt-3">Browse Market</a>
+        </div>
+    }
+    else
+    {
+        <div class="glass-card p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="crypto-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Type</th>
+                            <th>Asset</th>
+                            <th>Quantity</th>
+                            <th>Price at Trade</th>
+                            <th>Total Amount (USD)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in transactions)
+                        {
+                            <tr>
+                                <td class="text-muted">@t.Timestamp.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</td>
+                                <td>
+                                    @if (t.Type == TransactionType.Buy)
+                                    {
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1"><i class="bi bi-arrow-down-left me-1"></i>BUY</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1"><i class="bi bi-arrow-up-right me-1"></i>SELL</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="fw-bold">@t.Symbol.ToUpper()</span>
+                                </td>
+                                <td>@t.Quantity.ToString("F8")</td>
+                                <td>$@t.PriceAtTrade.ToString("N2")</td>
+                                <td class="fw-bold">
+                                    @(t.Type == TransactionType.Buy ? "-" : "+") $@t.TotalUsdAmount.ToString("N2")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Transaction>? transactions;
+    private bool loading = true;
+    private string? userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            // Fetch all transactions for this user, ordered by newest first
+            transactions = await DbContext.Transactions
+                                          .Where(t => t.UserId == userId)
+                                          .OrderByDescending(t => t.Timestamp)
+                                          .ToListAsync();
+        }
+        loading = false;
+    }
+}

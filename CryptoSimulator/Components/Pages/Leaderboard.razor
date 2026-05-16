@@ -1,0 +1,126 @@
+@page "/leaderboard"
+@using Microsoft.AspNetCore.Authorization
+@using CryptoSimulator.Services
+@using CryptoSimulator.Data
+@using CryptoSimulator.Data.Models
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@inject CoinGeckoService CoinService
+@inject TradingService TradeService
+@inject ApplicationDbContext DbContext
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="gradient-text mb-0"><i class="bi bi-trophy-fill me-2"></i>Global Leaderboard</h2>
+    </div>
+
+    @if (loading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Calculating rankings...</p>
+        </div>
+    }
+    else
+    {
+        <div class="glass-card p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="crypto-table mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Rank</th>
+                            <th>Trader</th>
+                            <th>Total Net Worth</th>
+                            <th>Cash Balance</th>
+                            <th class="pe-4 text-end">Holdings Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < leaderRows.Count; i++)
+                        {
+                            var row = leaderRows[i];
+                            var isTopRow = i < 3;
+                            <tr class="@(i == 0 ? "bg-warning bg-opacity-10" : "")">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center justify-content-center rounded-circle fw-bold" 
+                                         style="width: 32px; height: 32px; background: @(i == 0 ? "#FFD700" : i == 1 ? "#C0C0C0" : i == 2 ? "#CD7F32" : "rgba(255,255,255,0.05)"); color: @(isTopRow ? "#000" : "inherit")">
+                                        @(i + 1)
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
+                                            <i class="bi bi-person text-primary"></i>
+                                        </div>
+                                        <span class="fw-bold">@row.Username</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-primary">$@row.TotalNetWorth.ToString("N2")</span>
+                                </td>
+                                <td class="text-muted">$@row.Cash.ToString("N2")</td>
+                                <td class="pe-4 text-end">
+                                    <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1">
+                                        $@row.HoldingsValue.ToString("N2")
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<LeaderboardRow> leaderRows = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLeaderboard();
+        loading = false;
+    }
+
+    private async Task LoadLeaderboard()
+    {
+        var users = await DbContext.Users
+            .Include(u => u.Wallet)
+            .Include(u => u.Portfolio)
+            .ToListAsync();
+
+        var prices = await CoinService.GetTopCoinsAsync(250);
+        
+        var rows = new List<LeaderboardRow>();
+
+        foreach (var user in users)
+        {
+            decimal holdingsValue = 0;
+            foreach (var item in user.Portfolio)
+            {
+                var price = prices.FirstOrDefault(p => p.Id == item.CoinId)?.CurrentPrice ?? 0;
+                holdingsValue += item.Quantity * price;
+            }
+
+            decimal cash = user.Wallet?.Balance ?? 0;
+            rows.Add(new LeaderboardRow
+            {
+                Username = user.UserName ?? "Unknown",
+                TotalNetWorth = cash + holdingsValue,
+                Cash = cash,
+                HoldingsValue = holdingsValue
+            });
+        }
+
+        leaderRows = rows.OrderByDescending(r => r.TotalNetWorth).ToList();
+    }
+
+    private class LeaderboardRow
+    {
+        public string Username { get; set; } = "";
+        public decimal TotalNetWorth { get; set; }
+        public decimal Cash { get; set; }
+        public decimal HoldingsValue { get; set; }
+    }
+}

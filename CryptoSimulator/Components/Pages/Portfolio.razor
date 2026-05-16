@@ -1,0 +1,175 @@
+@page "/portfolio"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using CryptoSimulator.Services
+@using CryptoSimulator.Data
+@using CryptoSimulator.Data.Models
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@inject CoinGeckoService CoinService
+@inject TradingService TradeService
+@inject ApplicationDbContext DbContext
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<div class="container mt-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="gradient-text mb-1 fw-bold"><i class="bi bi-wallet2 me-2"></i>My Portfolio</h2>
+            <p class="text-muted small mb-0">Track your assets, balance, and overall performance.</p>
+        </div>
+        <button class="btn btn-outline-danger btn-sm px-3" @onclick="ResetAccount" disabled="@isResetting">
+            @if (isResetting)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Resetting...</span>
+            }
+            else
+            {
+                <i class="bi bi-arrow-counterclockwise me-2"></i>
+                <span>Reset Account</span>
+            }
+        </button>
+    </div>
+
+    @if (loading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Calculating portfolio value...</p>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="glass-card text-center">
+                    <small class="text-muted text-uppercase">Total Net Worth</small>
+                    <h2 class="fw-bold">$@((wallet?.Balance + totalHoldingsValue)?.ToString("N2"))</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card text-center">
+                    <small class="text-muted text-uppercase">Cash Balance</small>
+                    <h2 class="fw-bold text-success">$@wallet?.Balance.ToString("N2")</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card text-center">
+                    <small class="text-muted text-uppercase">Holdings Value</small>
+                    <h2 class="fw-bold text-info">$@totalHoldingsValue.ToString("N2")</h2>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="mb-3">Holdings</h4>
+        @if (holdings == null || !holdings.Any())
+        {
+            <div class="glass-card text-center py-5">
+                <p class="text-muted">You don't have any holdings yet. Go to the market to start trading!</p>
+                <a href="/market" class="btn btn-outline-primary">Browse Market</a>
+            </div>
+        }
+        else
+        {
+            <div class="glass-card p-0 overflow-hidden">
+                <table class="crypto-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Quantity</th>
+                            <th>Avg Price</th>
+                            <th>Current Price</th>
+                            <th>Market Value</th>
+                            <th>PnL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in holdings)
+                        {
+                            var currentPrice = prices.FirstOrDefault(p => p.Id == item.CoinId)?.CurrentPrice ?? 0;
+                            var marketValue = item.Quantity * currentPrice;
+                            var pnl = marketValue - (item.Quantity * item.AverageBuyPrice);
+                            var pnlPercent = item.AverageBuyPrice > 0 ? (pnl / (item.Quantity * item.AverageBuyPrice)) * 100 : 0;
+
+                            <tr>
+                                <td>
+                                    <span class="fw-bold">@item.Symbol.ToUpper()</span>
+                                </td>
+                                <td>@item.Quantity.ToString("F8")</td>
+                                <td>$@item.AverageBuyPrice.ToString("N2")</td>
+                                <td>$@currentPrice.ToString("N2")</td>
+                                <td>$@marketValue.ToString("N2")</td>
+                                <td class="@(pnl >= 0 ? "price-up" : "price-down")">
+                                    $@pnl.ToString("N2") (@pnlPercent.ToString("F2")%)
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<PortfolioItem>? holdings;
+    private List<CoinModel> prices = new();
+    private Wallet? wallet;
+    private decimal totalHoldingsValue;
+    private bool loading = true;
+    private string? userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            await LoadData();
+        }
+        loading = false;
+    }
+
+    private async Task LoadData()
+    {
+        wallet = await DbContext.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
+        holdings = await DbContext.Portfolios.Where(p => p.UserId == userId).ToListAsync();
+        prices = await CoinService.GetTopCoinsAsync(250);
+        
+        totalHoldingsValue = await TradeService.GetTotalPortfolioValueAsync(userId!, prices);
+    }
+
+    private bool isResetting = false;
+
+    private async Task ResetAccount()
+    {
+        bool confirm = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to completely reset your account? All your coins and transaction history will be deleted, and your balance will be reset to $10,000. This cannot be undone.");
+        if (!confirm) return;
+
+        isResetting = true;
+        
+        if (userId != null)
+        {
+            // Delete Portfolio
+            var userPortfolios = await DbContext.Portfolios.Where(p => p.UserId == userId).ToListAsync();
+            DbContext.Portfolios.RemoveRange(userPortfolios);
+
+            // Delete Transactions
+            var userTransactions = await DbContext.Transactions.Where(t => t.UserId == userId).ToListAsync();
+            DbContext.Transactions.RemoveRange(userTransactions);
+
+            // Reset Wallet
+            if (wallet != null)
+            {
+                wallet.Balance = 10000.00m;
+            }
+
+            await DbContext.SaveChangesAsync();
+            await LoadData();
+        }
+
+        isResetting = false;
+    }
+}

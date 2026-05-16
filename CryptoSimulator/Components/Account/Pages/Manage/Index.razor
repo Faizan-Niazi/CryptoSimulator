@@ -1,0 +1,94 @@
+@page "/Account/Manage"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using CryptoSimulator.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityUserAccessor UserAccessor
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Profile Settings — CryptoSimulator</PageTitle>
+
+<div class="mb-4">
+    <h4 class="fw-bold mb-1">Public Profile</h4>
+    <p class="text-muted small">Update your account information and how others see you.</p>
+</div>
+
+<StatusMessage />
+
+<div class="row">
+    <div class="col-xl-8">
+        <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
+            <DataAnnotationsValidator />
+            
+            <div class="mb-4">
+                <label class="form-label fw-semibold small text-uppercase text-muted">Username</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark bg-opacity-25 border-secondary border-opacity-25"><i class="bi bi-at"></i></span>
+                    <input type="text" value="@username" class="form-control bg-dark bg-opacity-10 border-secondary border-opacity-25 text-muted" disabled />
+                </div>
+                <div class="form-text small">Your username is unique and cannot be changed.</div>
+            </div>
+
+            <div class="mb-4">
+                <label for="phone-number" class="form-label fw-semibold small text-uppercase text-muted">Phone Number</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark bg-opacity-25 border-secondary border-opacity-25"><i class="bi bi-telephone"></i></span>
+                    <InputText @bind-Value="Input.PhoneNumber" class="form-control bg-dark bg-opacity-10 border-secondary border-opacity-25" id="phone-number" placeholder="Enter your phone number" />
+                </div>
+                <ValidationMessage For="() => Input.PhoneNumber" class="text-danger small mt-1" />
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-5">
+                <button type="submit" class="btn btn-warning px-5 fw-bold py-2">
+                    <i class="bi bi-check2-circle me-2"></i>Save Changes
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private ApplicationUser user = default!;
+    private string? username;
+    private string? phoneNumber;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await UserAccessor.GetRequiredUserAsync(HttpContext);
+        username = await UserManager.GetUserNameAsync(user);
+        phoneNumber = await UserManager.GetPhoneNumberAsync(user);
+
+        Input.PhoneNumber ??= phoneNumber;
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (Input.PhoneNumber != phoneNumber)
+        {
+            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
+            if (!setPhoneResult.Succeeded)
+            {
+                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
+            }
+        }
+
+        await SignInManager.RefreshSignInAsync(user);
+        RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
+    }
+
+    private sealed class InputModel
+    {
+        [Phone]
+        [Display(Name = "Phone number")]
+        public string? PhoneNumber { get; set; }
+    }
+}
