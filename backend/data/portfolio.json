@@ -1,0 +1,11 @@
+[
+  {
+    "_id": "p_jfd6liua0",
+    "user": "u_g6e2ger4v",
+    "coinId": "ethereum",
+    "symbol": "eth",
+    "name": "Ethereum",
+    "amount": 5,
+    "averageBuyPrice": 3480.5
+  }
+]

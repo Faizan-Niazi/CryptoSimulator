@@ -1,0 +1,38 @@
+[
+  {
+    "_id": "t_9r9tk7wfo",
+    "user": "u_g6e2ger4v",
+    "type": "BUY",
+    "coinId": "solana",
+    "symbol": "sol",
+    "name": "Solana",
+    "amount": 111,
+    "price": 165.75,
+    "totalUsd": 18398.25,
+    "timestamp": "2026-06-02T08:56:14.509Z"
+  },
+  {
+    "_id": "t_351jfp3ve",
+    "user": "u_g6e2ger4v",
+    "type": "SELL",
+    "coinId": "solana",
+    "symbol": "sol",
+    "name": "Solana",
+    "amount": 111,
+    "price": 165.75,
+    "totalUsd": 18398.25,
+    "timestamp": "2026-06-02T19:34:12.657Z"
+  },
+  {
+    "_id": "t_ddwjw1gbq",
+    "user": "u_g6e2ger4v",
+    "type": "BUY",
+    "coinId": "ethereum",
+    "symbol": "eth",
+    "name": "Ethereum",
+    "amount": 5,
+    "price": 3480.5,
+    "totalUsd": 17402.5,
+    "timestamp": "2026-06-02T19:50:46.019Z"
+  }
+]
