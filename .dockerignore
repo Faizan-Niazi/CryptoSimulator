@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+frontend/node_modules
+backend/node_modules
+
+# Build output (gets rebuilt inside Docker)
+frontend/dist
+
+# Git & IDE
+.git
+.gitignore
+.vs
+.vscode
+
+# Env files (inject secrets via Render/Docker env vars, never bake into image)
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# README and docs (not needed at runtime)
+*.md
