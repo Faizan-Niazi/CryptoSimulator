@@ -163,9 +163,6 @@ const Header = () => {
                   className="w-full text-left px-5 py-3.5 hover:bg-indigo-50/50 flex items-center justify-between border-b border-slate-100 last:border-0 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    {coin.image && (
-                      <img src={coin.image} alt={coin.name} className="w-5 h-5 object-contain" />
-                    )}
                     <div>
                       <span className="font-bold text-slate-700 text-sm">{coin.name}</span>
                       <span className="ml-2 text-xs text-slate-400 font-extrabold uppercase">{coin.symbol}</span>
